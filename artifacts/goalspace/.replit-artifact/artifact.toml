@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "GoalSpace"
+description = "A real-time team goal management workspace for companies, with protected membership, goal tracking, persistent activity history, and team chat."
+version = "1.0.0"
+id = "artifacts/goalspace"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21328
+
+[services.development]
+run = "pnpm --filter @workspace/goalspace run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/goalspace", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/goalspace/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21328"
+BASE_PATH = "/"

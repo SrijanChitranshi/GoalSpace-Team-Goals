@@ -3,13 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: GoalSpace workspace, goals, permissions, activity, and chat API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: User authentication
+  - name: workspaces
+    description: Workspace management
+  - name: goals
+    description: Goal management
+  - name: members
+    description: Workspace members and permissions
+  - name: chat
+    description: Workspace messages
+  - name: activity
+    description: Workspace activity history
 paths:
   /healthz:
     get:
@@ -24,7 +36,597 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /v1/auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered user and session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed-in user and session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "200":
+          description: Signed out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /v1/workspaces:
+    get:
+      operationId: listWorkspaces
+      tags: [workspaces]
+      summary: List the current user's workspaces
+      responses:
+        "200":
+          description: Authorized workspaces
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceList"
+    post:
+      operationId: createWorkspace
+      tags: [workspaces]
+      summary: Create a workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceInput"
+      responses:
+        "201":
+          description: Created workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+  /v1/workspaces/{workspaceId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: getWorkspace
+      tags: [workspaces]
+      summary: Get workspace details
+      responses:
+        "200":
+          description: Workspace details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateWorkspace
+      tags: [workspaces]
+      summary: Update workspace settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceUpdate"
+      responses:
+        "200":
+          description: Updated workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+  /v1/workspaces/{workspaceId}/summary:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: getWorkspaceSummary
+      tags: [workspaces]
+      summary: Get live dashboard metrics
+      responses:
+        "200":
+          description: Workspace metrics derived from stored goals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceSummary"
+  /v1/workspaces/{workspaceId}/invitations:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    post:
+      operationId: createInvitation
+      tags: [workspaces]
+      summary: Create a member invitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationInput"
+      responses:
+        "201":
+          description: Invitation code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invitation"
+  /v1/workspaces/{workspaceId}/invitations/{invitationId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: revokeInvitation
+      tags: [workspaces]
+      summary: Revoke an invitation
+      responses:
+        "200":
+          description: Invitation revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /v1/invitations/join:
+    post:
+      operationId: joinWithInvitation
+      tags: [workspaces]
+      summary: Join or request to join with an invitation code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinInput"
+      responses:
+        "200":
+          description: Joined workspace or submitted request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinResult"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/workspaces/{workspaceId}/join-requests:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listJoinRequests
+      tags: [members]
+      summary: List pending join requests
+      responses:
+        "200":
+          description: Pending requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JoinRequest"
+  /v1/workspaces/{workspaceId}/join-requests/{requestId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: decideJoinRequest
+      tags: [members]
+      summary: Approve or reject a join request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRequestDecision"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinRequest"
+  /v1/workspaces/{workspaceId}/goals:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listGoals
+      tags: [goals]
+      summary: List and filter workspace goals
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [not-started, in-progress, blocked, completed]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: Goals and page information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalPage"
+    post:
+      operationId: createGoal
+      tags: [goals]
+      summary: Create a goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInput"
+      responses:
+        "201":
+          description: Created goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+  /v1/workspaces/{workspaceId}/goals/{goalId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: goalId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getGoal
+      tags: [goals]
+      summary: Get a goal
+      responses:
+        "200":
+          description: Goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+    patch:
+      operationId: updateGoal
+      tags: [goals]
+      summary: Update a goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalUpdate"
+      responses:
+        "200":
+          description: Updated goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "409":
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteGoal
+      tags: [goals]
+      summary: Soft-delete a goal
+      responses:
+        "200":
+          description: Goal archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /v1/workspaces/{workspaceId}/goals/{goalId}/history:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: goalId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getGoalHistory
+      tags: [activity]
+      summary: Get complete goal audit history
+      responses:
+        "200":
+          description: Goal history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEntry"
+  /v1/workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listMembers
+      tags: [members]
+      summary: List workspace members
+      responses:
+        "200":
+          description: Authorized members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+  /v1/workspaces/{workspaceId}/members/{userId}/role:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateMemberRole
+      tags: [members]
+      summary: Promote or demote a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberRoleUpdate"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+  /v1/workspaces/{workspaceId}/members/{userId}/permissions:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateMemberPermissions
+      tags: [members]
+      summary: Configure member permissions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PermissionsUpdate"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+  /v1/workspaces/{workspaceId}/members/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: removeMember
+      tags: [members]
+      summary: Remove a workspace member
+      responses:
+        "200":
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /v1/workspaces/{workspaceId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listMessages
+      tags: [chat]
+      summary: Get paginated workspace chat history
+      parameters:
+        - name: before
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Workspace messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagePage"
+    post:
+      operationId: createMessage
+      tags: [chat]
+      summary: Send a workspace message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Sent message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /v1/workspaces/{workspaceId}/messages/{messageId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: editMessage
+      tags: [chat]
+      summary: Edit a permitted message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageUpdate"
+      responses:
+        "200":
+          description: Updated message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+    delete:
+      operationId: deleteMessage
+      tags: [chat]
+      summary: Soft-delete a permitted message
+      responses:
+        "200":
+          description: Message deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /v1/workspaces/{workspaceId}/activity:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listActivity
+      tags: [activity]
+      summary: Get filtered workspace activity
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: memberId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: goalId
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Activity timeline and pagination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityPage"
 components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    Error:
+      description: Request failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +635,316 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        avatar: { type: ["string", "null"] }
+      required: [id, name, email, avatar]
+    RegisterInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+      required: [name, email, password]
+    LoginInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+      required: [user]
+    Workspace:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        workspaceCode: { type: string }
+        ownerId: { type: string }
+        approvalRequired: { type: boolean }
+        role: { type: string, enum: [owner, admin, member] }
+        createdAt: { type: string, format: date-time }
+      required: [id, name, workspaceCode, ownerId, approvalRequired, role, createdAt]
+    WorkspaceList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Workspace"
+      required: [items]
+    WorkspaceInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        approvalRequired: { type: boolean }
+      required: [name]
+    WorkspaceUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        approvalRequired: { type: boolean }
+    WorkspaceSummary:
+      type: object
+      properties:
+        totalGoals: { type: integer }
+        completedGoals: { type: integer }
+        pendingGoals: { type: integer }
+        overdueGoals: { type: integer }
+        completionPercent: { type: number }
+        memberCount: { type: integer }
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/Goal"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEntry"
+      required: [totalGoals, completedGoals, pendingGoals, overdueGoals, completionPercent, memberCount, upcoming, recentActivity]
+    InvitationInput:
+      type: object
+      properties:
+        expiresInDays: { type: integer, minimum: 1, maximum: 30, default: 7 }
+        usageLimit: { type: ["integer", "null"], minimum: 1 }
+      required: []
+    Invitation:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        expiresAt: { type: string, format: date-time }
+        usageLimit: { type: ["integer", "null"] }
+      required: [id, code, expiresAt, usageLimit]
+    JoinInput:
+      type: object
+      properties:
+        code: { type: string, minLength: 8 }
+      required: [code]
+    JoinResult:
+      type: object
+      properties:
+        status: { type: string, enum: [joined, pending] }
+        workspace:
+          oneOf:
+            - $ref: "#/components/schemas/Workspace"
+            - type: "null"
+      required: [status, workspace]
+    JoinRequest:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [pending, approved, rejected] }
+        createdAt: { type: string, format: date-time }
+      required: [id, userId, name, email, status, createdAt]
+    JoinRequestDecision:
+      type: object
+      properties:
+        decision: { type: string, enum: [approve, reject] }
+      required: [decision]
+    Goal:
+      type: object
+      properties:
+        id: { type: string }
+        workspaceId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        period: { type: string, enum: [daily, weekly, monthly] }
+        startDate: { type: ["string", "null"], format: date-time }
+        deadline: { type: ["string", "null"], format: date-time }
+        priority: { type: string, enum: [low, medium, high] }
+        status: { type: string, enum: [not-started, in-progress, blocked, completed] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        creatorId: { type: string }
+        creatorName: { type: string }
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoalAssignee"
+        lastEditorId: { type: ["string", "null"] }
+        lastEditorName: { type: ["string", "null"] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, workspaceId, title, description, period, startDate, deadline, priority, status, progress, creatorId, creatorName, assignees, lastEditorId, lastEditorName, version, createdAt, updatedAt]
+    GoalAssignee:
+      type: object
+      properties:
+        userId: { type: string }
+        name: { type: string }
+      required: [userId, name]
+    GoalPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Goal"
+        page: { type: integer }
+        total: { type: integer }
+      required: [items, page, total]
+    GoalInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        period: { type: string, enum: [daily, weekly, monthly] }
+        startDate: { type: ["string", "null"], format: date-time }
+        deadline: { type: ["string", "null"], format: date-time }
+        priority: { type: string, enum: [low, medium, high] }
+        status: { type: string, enum: [not-started, in-progress, blocked, completed] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        assigneeIds:
+          type: array
+          items: { type: string }
+        expectedVersion: { type: integer, minimum: 0 }
+      required: [title, description, period, priority]
+    GoalUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        period: { type: string, enum: [daily, weekly, monthly] }
+        startDate: { type: ["string", "null"], format: date-time }
+        deadline: { type: ["string", "null"], format: date-time }
+        priority: { type: string, enum: [low, medium, high] }
+        status: { type: string, enum: [not-started, in-progress, blocked, completed] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        assigneeIds:
+          type: array
+          items: { type: string }
+        expectedVersion: { type: integer, minimum: 0 }
+    Member:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        avatar: { type: ["string", "null"] }
+        role: { type: string, enum: [owner, admin, member] }
+        permissions:
+          $ref: "#/components/schemas/Permissions"
+        joinedAt: { type: string, format: date-time }
+      required: [id, name, email, avatar, role, permissions, joinedAt]
+    MemberRoleUpdate:
+      type: object
+      properties:
+        role: { type: string, enum: [admin, member] }
+      required: [role]
+    PermissionsUpdate:
+      type: object
+      properties:
+        permissions:
+          $ref: "#/components/schemas/Permissions"
+      required: [permissions]
+    Permissions:
+      type: object
+      properties:
+        viewGoals: { type: boolean }
+        createGoals: { type: boolean }
+        editOwnGoals: { type: boolean }
+        editAnyGoals: { type: boolean }
+        deleteOwnGoals: { type: boolean }
+        deleteAnyGoals: { type: boolean }
+        assignGoals: { type: boolean }
+        changeGoalStatus: { type: boolean }
+        sendMessages: { type: boolean }
+        editOwnMessages: { type: boolean }
+        deleteOwnMessages: { type: boolean }
+        moderateChat: { type: boolean }
+        inviteMembers: { type: boolean }
+        approveJoinRequests: { type: boolean }
+        manageMemberPermissions: { type: boolean }
+      required: [viewGoals, createGoals, editOwnGoals, editAnyGoals, deleteOwnGoals, deleteAnyGoals, assignGoals, changeGoalStatus, sendMessages, editOwnMessages, deleteOwnMessages, moderateChat, inviteMembers, approveJoinRequests, manageMemberPermissions]
+    Message:
+      type: object
+      properties:
+        id: { type: string }
+        workspaceId: { type: string }
+        senderId: { type: string }
+        senderName: { type: string }
+        senderAvatar: { type: ["string", "null"] }
+        text: { type: string }
+        replyToId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        editedAt: { type: ["string", "null"], format: date-time }
+        deleted: { type: boolean }
+      required: [id, workspaceId, senderId, senderName, senderAvatar, text, replyToId, createdAt, editedAt, deleted]
+    MessagePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        nextCursor: { type: ["string", "null"] }
+      required: [items, nextCursor]
+    MessageInput:
+      type: object
+      properties:
+        text: { type: string, minLength: 1, maxLength: 4000 }
+        replyToId: { type: ["string", "null"] }
+      required: [text]
+    MessageUpdate:
+      type: object
+      properties:
+        text: { type: string, minLength: 1, maxLength: 4000 }
+      required: [text]
+    ActivityEntry:
+      type: object
+      properties:
+        id: { type: string }
+        workspaceId: { type: string }
+        goalId: { type: ["string", "null"] }
+        goalTitle: { type: ["string", "null"] }
+        actorId: { type: string }
+        actorName: { type: string }
+        actorAvatar: { type: ["string", "null"] }
+        action: { type: string }
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldChange"
+        createdAt: { type: string, format: date-time }
+      required: [id, workspaceId, goalId, goalTitle, actorId, actorName, actorAvatar, action, changes, createdAt]
+    FieldChange:
+      type: object
+      properties:
+        field: { type: string }
+        previousValue: { type: ["string", "null"] }
+        newValue: { type: ["string", "null"] }
+      required: [field, previousValue, newValue]
+    ActivityPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEntry"
+        page: { type: integer }
+        total: { type: integer }
+      required: [items, page, total]
 
