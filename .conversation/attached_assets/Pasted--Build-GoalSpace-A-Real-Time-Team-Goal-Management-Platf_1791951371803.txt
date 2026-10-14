@@ -1,0 +1,440 @@
+# Build GoalSpace — A Real-Time Team Goal Management Platform
+
+Act as a senior full-stack MERN developer and build a complete, responsive, production-minded web application called **GoalSpace**.
+
+Do not create just a static UI or frontend prototype. Build a functional application with authentication, database persistence, backend APIs, permissions, real-time collaboration, and audit history.
+
+## 1. Technology Stack
+
+Use:
+- Frontend: React with Vite
+- Styling: Tailwind CSS
+- Backend: Node.js and Express.js
+- Database: MongoDB with Mongoose
+- Real-time functionality: Socket.IO
+- Authentication: Secure password hashing and JWT or secure sessions
+- Icons: Lucide React
+- Charts: Recharts, if needed
+
+Use environment variables for secrets and database credentials. Provide a working `.env.example`, setup instructions, and a README.
+
+If the environment requires a different deployment-compatible setup, explain the adjustment before making major architectural changes.
+
+## 2. Core Concept
+
+GoalSpace is a private workspace-based platform for companies and teams of approximately 8–10 members.
+
+Each company creates a workspace with:
+- A unique Workspace ID.
+- Invitation codes that authorized members can use to join.
+- Optional owner-managed approval for join requests.
+- Multiple admins appointed by the owner.
+- Configurable permissions for individual members.
+- Shared goals, team chat, and a complete activity history.
+
+Users must authenticate before accessing protected workspaces. A Workspace ID alone must never grant access.
+
+## 3. Authentication and Workspace Management
+
+Implement:
+- User registration and login.
+- Secure password hashing.
+- Logout and protected routes.
+- User profile with name, email, and avatar.
+- Workspace creation and unique Workspace ID generation.
+- Joining through secure invitation codes.
+- Invitation expiry, revocation, and optional usage limits.
+- Optional approval of join requests by the owner or authorized admins.
+- Workspace member list and member removal.
+- Multiple admins per workspace.
+- Workspace settings and ownership protection.
+
+A user may belong to multiple workspaces. Users must only see workspaces they are authorized to access.
+
+## 4. Roles and Individual Permissions
+
+Create three roles: Owner, Admin, and Member.
+
+The owner has ultimate control. The owner can promote members to admin, demote admins, remove members, manage invitations, and configure permissions.
+
+Provide a dedicated permission-management screen where the owner can enable or disable permissions for each member.
+
+Include permissions such as:
+- View goals.
+- Create goals.
+- Edit own goals.
+- Edit any member's goals.
+- Delete own goals.
+- Delete any member's goals.
+- Assign goals to other employees.
+- Change goal status.
+- Send messages.
+- Edit or delete own messages.
+- Moderate team chat.
+- Invite members.
+- Approve join requests.
+- Manage member permissions, where explicitly delegated.
+
+Admins must not be able to override restrictions imposed by the owner or grant themselves additional privileges.
+
+Enforce all permissions on the backend, not merely by hiding frontend buttons.
+
+## 5. Goal Management
+
+Users with the appropriate permissions can create, view, edit, assign, and complete goals.
+
+Support:
+- Daily goals.
+- Weekly goals.
+- Monthly goals.
+- Goal title and description.
+- Creator and assigned employees.
+- Start date and deadline.
+- Priority: Low, Medium, High.
+- Status: Not Started, In Progress, Blocked, Completed.
+- Optional progress percentage.
+- Search, filters, and sorting.
+- Upcoming deadlines and overdue indicators.
+
+Create a clean goal dashboard with separate Daily, Weekly, and Monthly tabs.
+
+Every goal should display:
+- Title and description.
+- Creator.
+- Assigned employees.
+- Status and priority.
+- Deadline.
+- Creation time.
+- Last edited by and last edited time.
+- An option to view complete edit history.
+
+When an authorized employee changes a meeting from 9 AM to 10 AM, every connected member should see the update immediately.
+
+## 6. Mandatory Feature: Complete Audit Trail
+
+This is one of the most important features of GoalSpace.
+
+Maintain a persistent, chronological audit history for every workspace. Record all important goal-related actions, including:
+
+- Goal created.
+- Goal edited.
+- Goal completed.
+- Goal reopened.
+- Goal deleted.
+- Goal assigned or reassigned.
+- Deadline changed.
+- Priority changed.
+- Status changed.
+- Description or title changed.
+- Member permissions changed.
+- Admin promoted or demoted.
+- Member added or removed.
+- Invitation created or revoked.
+- Join request approved or rejected.
+- Important workspace setting changed.
+
+For every event, record:
+- Workspace ID.
+- Relevant goal ID, if applicable.
+- Actor's user ID.
+- Actor's name or reliable reference to the user's profile.
+- Action type.
+- Exact server-generated timestamp.
+- Changed field names.
+- Previous values.
+- New values.
+- Relevant metadata, when appropriate.
+
+Example audit records:
+
+1. Amit Sharma edited “Team Meeting” at 10:15 AM.
+   - Field: Meeting time
+   - Previous value: 9:00 AM
+   - New value: 10:00 AM
+
+2. Priya Verma completed “Prepare Project Report” at 11:32 AM.
+   - Previous status: In Progress
+   - New status: Completed
+
+3. Rahul Kumar reassigned “API Integration” at 12:05 PM.
+   - Previous assignee: Amit Sharma
+   - New assignee: Rahul Kumar
+
+Build a dedicated Activity History page with:
+- Chronological timeline.
+- Actor's name and avatar.
+- Human-readable action descriptions.
+- Date and time.
+- Goal title or related resource.
+- Previous and new values for edits.
+- Filters by member, action type, goal, and date range.
+- Pagination or infinite scrolling.
+- A goal-specific history view.
+- A workspace-wide activity feed.
+
+Display timestamps in the user's local timezone while storing timestamps consistently in UTC.
+
+Audit history must be generated by trusted backend code after validating and processing an action. Never trust a client-supplied actor identity or timestamp.
+
+Ordinary users must not be able to edit or delete audit records. Keep audit records when goals are soft-deleted so their history remains available to authorized users.
+
+For critical database changes, use a transaction where supported so the goal update and corresponding audit entry do not become inconsistent. Do not silently ignore failed audit writes.
+
+## 7. Real-Time Collaboration
+
+Use Socket.IO for real-time updates.
+
+Implement:
+- Live goal creation, editing, deletion, and completion events.
+- Live chat messages.
+- Online member indicators.
+- Real-time activity-feed updates.
+- Immediate UI synchronization without manual page refresh.
+
+Use private Socket.IO rooms for individual workspaces.
+
+Authenticate socket connections and verify workspace membership before allowing a user to join a room. Validate authorization for client-originated events.
+
+Recommended events:
+- workspace:join
+- workspace:leave
+- presence:update
+- goal:created
+- goal:updated
+- goal:deleted
+- chat:send
+- chat:new
+- chat:edited
+- activity:new
+
+Use acknowledgements and error handling for socket operations.
+
+Persist changes in MongoDB before broadcasting trusted update events. Avoid sending sensitive workspace information to unauthorized clients.
+
+Implement basic concurrency protection using a version field or equivalent optimistic concurrency control so simultaneous edits do not silently overwrite newer changes.
+
+## 8. Team Chat
+
+Create a workspace-specific chat interface similar to a simple group messenger.
+
+Include:
+- Message history persisted in MongoDB.
+- Sender name and avatar.
+- Message timestamps.
+- Text messages.
+- Basic replies to messages, if feasible.
+- Editing and deletion of permitted messages.
+- Live message delivery.
+- Clear distinction between normal messages and system activity notifications.
+
+Display useful system notifications such as “Amit completed Prepare Project Report” when appropriate, without duplicating every audit event unnecessarily.
+
+For the first version, prioritize reliable text messaging over file uploads, reactions, and read receipts.
+
+## 9. Dashboard and UI Design
+
+Create a polished, modern SaaS dashboard. Use a clean professional interface rather than a generic template.
+
+Design direction:
+- Responsive desktop and mobile layouts.
+- Consistent typography and spacing.
+- Neutral background with a restrained blue or indigo accent.
+- Sidebar navigation on desktop.
+- Responsive navigation on mobile.
+- Clear cards, tables, forms, dialogs, and status indicators.
+- Light and dark themes if time permits.
+- Accessible form labels and keyboard-friendly controls.
+- Loading skeletons, empty states, confirmation dialogs, and helpful error messages.
+
+Main navigation:
+1. Overview
+2. Daily Goals
+3. Weekly Goals
+4. Monthly Goals
+5. Team Chat
+6. Members
+7. Permissions
+8. Activity History
+9. Workspace Settings
+
+Dashboard widgets:
+- Total goals.
+- Completed goals.
+- Pending goals.
+- Overdue goals.
+- Completion percentage.
+- Upcoming deadlines.
+- Recent activity.
+- Team progress.
+
+Avoid fake metrics in production. Derive dashboard figures from actual database records.
+
+## 10. MongoDB Models
+
+Create suitable Mongoose schemas for:
+
+### User
+Name, email, password hash, avatar, timestamps.
+
+### Workspace
+Name, unique Workspace ID, owner ID, settings, join-approval configuration, timestamps.
+
+### Membership
+Workspace ID, user ID, role, individual permissions, membership status, timestamps.
+
+Add a unique compound index on workspace ID and user ID.
+
+### Invitation
+Workspace ID, hashed invitation secret, creator, expiry, usage limits, revocation status.
+
+### Goal
+Workspace ID, title, description, period, start date, deadline, priority, status, creator, assignees, last editor, version, timestamps.
+
+### Message
+Workspace ID, sender ID, message text, optional reply reference, edit/deletion metadata, timestamps.
+
+### ActivityLog
+Workspace ID, optional goal ID, actor ID, action type, changed fields, previous values, new values, timestamp, relevant metadata.
+
+Add appropriate indexes for workspace-scoped queries, goal filters, activity history, and paginated chat messages.
+
+Ensure all references and queries are scoped to the correct workspace.
+
+## 11. Backend API
+
+Create REST endpoints under `/api/v1`.
+
+Authentication:
+- POST `/auth/register`
+- POST `/auth/login`
+- POST `/auth/logout`
+- GET `/auth/me`
+
+Workspaces:
+- POST `/workspaces`
+- GET `/workspaces`
+- GET `/workspaces/:id`
+- PATCH `/workspaces/:id`
+
+Invitations and joining:
+- POST `/workspaces/:id/invitations`
+- POST `/invitations/join`
+- GET `/workspaces/:id/join-requests`
+- PATCH `/workspaces/:id/join-requests/:requestId`
+- DELETE `/workspaces/:id/invitations/:inviteId`
+
+Goals:
+- GET `/workspaces/:id/goals`
+- POST `/workspaces/:id/goals`
+- GET `/workspaces/:id/goals/:goalId`
+- PATCH `/workspaces/:id/goals/:goalId`
+- DELETE `/workspaces/:id/goals/:goalId`
+- GET `/workspaces/:id/goals/:goalId/history`
+
+Members and permissions:
+- GET `/workspaces/:id/members`
+- PATCH `/workspaces/:id/members/:userId/role`
+- PATCH `/workspaces/:id/members/:userId/permissions`
+- DELETE `/workspaces/:id/members/:userId`
+
+Chat and activity:
+- GET `/workspaces/:id/messages`
+- POST `/workspaces/:id/messages`
+- PATCH `/workspaces/:id/messages/:messageId`
+- DELETE `/workspaces/:id/messages/:messageId`
+- GET `/workspaces/:id/activity`
+
+Implement authentication middleware, workspace-membership checks, reusable permission middleware, input validation, pagination, and centralized error handling.
+
+## 12. Recommended Project Structure
+
+Separate frontend and backend concerns.
+
+Use a structure similar to:
+
+client/
+  src/
+    components/
+    pages/
+    layouts/
+    hooks/
+    context/
+    services/
+    utils/
+
+server/
+  src/
+    config/
+    models/
+    routes/
+    controllers/
+    services/
+    middleware/
+    sockets/
+    utils/
+
+Keep authorization and business logic in reusable services rather than duplicating checks across controllers.
+
+## 13. Testing Requirements
+
+Test at minimum:
+- Registration and login.
+- Workspace creation and invitation joining.
+- Join approval and rejection.
+- Role changes and individual permissions.
+- Goal CRUD operations.
+- Goal completion and reopening.
+- Correct before/after audit history.
+- Correct actor attribution and timestamps.
+- Unauthorized access attempts.
+- Cross-workspace data isolation.
+- Real-time updates between two browser sessions.
+- Chat persistence.
+- Conflicting simultaneous goal edits.
+- Revoked and expired invitation codes.
+
+A member without edit permission must be unable to modify a goal by calling the API directly.
+
+## 14. Implementation Plan
+
+Build incrementally in this order:
+
+Phase 1: Project setup, authentication, MongoDB, workspace creation, and membership.
+
+Phase 2: Invitation codes, join approval, roles, and configurable permissions.
+
+Phase 3: Goal CRUD, daily/weekly/monthly views, assignments, and status management.
+
+Phase 4: Persistent audit trail with before/after values, actor attribution, and completion events.
+
+Phase 5: Socket.IO goal updates, real-time activity feed, and team chat.
+
+Phase 6: Dashboard metrics, filtering, testing, responsive design, and deployment.
+
+Prioritize complete, working core features over a large number of unfinished features.
+
+## 15. Final Instructions
+
+First inspect the existing Replit project and reuse working code if present. If the project is empty, initialize it properly.
+
+Then implement the application in small, verifiable stages.
+
+Do not:
+- Build a static mockup and call it complete.
+- Use fake authentication.
+- Store passwords in plaintext.
+- Hardcode fake dashboard data.
+- Put secrets directly in source code.
+- Rely only on frontend permissions.
+- Broadcast private workspace data to all connected clients.
+- Omit the activity history feature.
+- Claim a feature is complete unless it has actually been implemented and tested.
+
+After implementation, provide:
+1. A summary of completed features.
+2. Instructions for configuring MongoDB and environment variables.
+3. Commands to run the application.
+4. A list of features that remain incomplete.
+5. Testing instructions for demonstrating real-time collaboration with multiple user accounts.
+
+Start by inspecting the project, establishing the architecture, and implementing the first working end-to-end workflow. Continue through the remaining requirements without replacing functional code with placeholders.
